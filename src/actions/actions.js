@@ -12,29 +12,32 @@ let config = {
 };
 firebase.initializeApp(config);
 let auth = firebase.auth();
+let database = firebase.database();
 
 /* Authentication actions */
 
 export function startListeningToAuth() {
   return function (dispatch) {
-      auth.onAuthStateChanged(user => {
-        if (user) {
-          auth.fetch(`users/${user.uid}`, {
-            context: {},
-            asArray: true,
-            then(data) {
-              let user = {
-                email: data[0].email,
-                name: data[0].name,
-                uid: user.uid
-              };
-              
-              dispatch(login(user));
-            }
-          });
-        } else {
-          dispatch(logout());
-        }
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        database.ref(`users/${user.uid}`).once('value', snapshot => {
+          if (snapshot.val()) {
+            let user = {
+              email: snapshot.val().email,
+              name: snapshot.val().name,
+              uid: user.uid
+            };
+            
+            dispatch(login(user));
+          } else {
+            dispatch(logout());
+          }
+        }, err => {
+          console.log(err);
+        });
+      } else {
+        dispatch(logout());
+      }
     });
   };
 }
